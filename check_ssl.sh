@@ -77,7 +77,7 @@ header
 
 # here we configure how many days ahead from today we'll check
 DAYS=15
-LIMIT=$(date --date="+$days days" +"%Y%m%d")
+LIMIT=$(date --date="+$DAYS days" +"%Y%m%d")
 
 SCRIPTPATH="$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)"
 
