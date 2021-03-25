@@ -18,13 +18,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+EXPIRING=()
+
 header() {
    echo "check_ssl.sh - Checking SSL dates"
    echo "---------------------------------"
 }
 
 cert_date() {
-   echo | openssl s_client -showcerts -servername $1 -connect $1:443 2>/dev/null | openssl x509 -inform pem -noout -text 2>/dev/null | grep -i "not after" | cut -f2- -d:
+   local DATE=$(echo | openssl s_client -showcerts -servername $1 -connect $1:443 2>/dev/null | openssl x509 -inform pem -noout -text 2>/dev/null | grep -i "not after" | cut -f2- -d:)
+   date --date="$DATE" +"%Y%m%d"
 }
 
 comp_date() {
@@ -39,15 +42,15 @@ check_config() {
 }
 
 validate() {
-   for HOST in $(cat $HOSTS)
+   for HOST in $(cat $2)
    do
       echo -e "\nChecking $HOST .. ..."
       CERT_DATE=$(cert_date "$HOST")
-      COMP_DATE=$(comp_date "$CERT_DATE")
+      COMP_DATE=$(comp_date "$1")
 
-      if [[ $COMP_DATE < $LIMIT ]]; then
+      if [[ "$CERT_DATE" -le "$COMP_DATE" ]]; then
          echo "Certificate will expire or not found!"
-         EXPIRING+=($HOST)
+         EXPIRING+=("$HOST")
       else
          echo "Certificate is ok."
       fi
@@ -62,14 +65,13 @@ check_expiring() {
       return
    fi
 
-   send_mail "$EXPIRING"
+   local LIST=$(IFS=, ; echo "${EXPIRING[*]}")
+   send_mail "$LIST"
 }
 
 send_mail() {
-   local SSMTP="eustaquiorangel@gmail.com" # of course you'll need to change this
-
    echo "Sending email ..."
-   printf "Subject: Expiring SSL certificates\n\nThis is the list of SSLcertificates which will expire soon:\n\n$1" | ssmtp "$SSMTP"
+   # fill here with your email software and configurations
    echo "Done."
 }
 
@@ -83,8 +85,7 @@ SCRIPTPATH="$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)"
 
 # loading hosts, put each host on one line
 HOSTS="${SCRIPTPATH}/check_ssl.cfg"
-EXPIRING=()
 
 check_config "$HOSTS"
-validate "$HOSTS"
+validate "$LIMIT" "$HOSTS"
 check_expiring
