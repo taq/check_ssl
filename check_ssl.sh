@@ -42,8 +42,12 @@ check_config() {
 }
 
 validate() {
-   for HOST in $(cat $2)
+   while read HOST
    do
+      if [ "${HOST}" == "" -o "${HOST:0:1}" == "#" ]; then
+         continue
+      fi
+
       echo -e "\nChecking $HOST .. ..."
       CERT_DATE=$(cert_date "$HOST")
       COMP_DATE=$(comp_date "$1")
@@ -54,7 +58,7 @@ validate() {
       else
          echo "Certificate is ok."
       fi
-   done
+   done <<< "$(cat $2)"
 }
 
 check_expiring() {
@@ -65,12 +69,13 @@ check_expiring() {
       return
    fi
 
+   echo -e "\nFound expiring/expired certificates: ${EXPIRING}"
    local LIST=$(IFS=, ; echo "${EXPIRING[*]}")
    send_mail "$LIST"
 }
 
 send_mail() {
-   echo "Sending email ..."
+   echo -e "Sending email ..."
    # fill here with your email software and configurations
    echo "Done."
 }
